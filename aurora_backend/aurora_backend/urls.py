@@ -16,12 +16,17 @@ Including another URLconf
 """
 
 from django.urls import path, include
-# from .views import (
+from .views import (
+    RegisterDispenserView,
+    DeleteDispenserView,
+    ShowAllDispensers
+)
 
-# )
 
 urlpatterns = [
-    # path('admin/', admin.site.urls),
+    path('api/register-dispenser/', RegisterDispenserView.as_view(), name='register-dispenser'),
+    path('api/delete-dispenser/<str:name>/', DeleteDispenserView.as_view(), name='delete-dispenser'),
+    path('api/list-all-user-dispensers/', ShowAllDispensers.as_view(), name='list-all-user-dispensers'),
     path('authentication/', include('authentication.urls')),
 ]
 
