@@ -125,3 +125,39 @@ class RegisterDispenserSerializer(serializers.Serializer):
                 raise serializers.ValidationError(_("You already have a dispenser with this name"))
 
         return data
+
+class UpdatePillNameSerializer(serializers.Serializer):
+    dispenser_name = serializers.CharField()
+    slot_number = serializers.IntegerField()
+    pill_name = serializers.CharField(max_length=100)
+
+    def validate_pill_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError(_("Pill name cannot be empty"))
+        return value.strip()
+
+
+class UpdateDispenserNameSerializer(serializers.Serializer):
+    current_name = serializers.CharField()
+    new_name = serializers.CharField(max_length=100)
+
+    def validate_new_name(self, value):
+        if len(value.strip()) < 3:
+            raise serializers.ValidationError(_("Dispenser name must be at least 3 characters long"))
+        
+        if not re.match(r'^[a-zA-Z0-9\s\-_]+$', value):
+            raise serializers.ValidationError(
+                _("Dispenser name can only contain letters, numbers, spaces, hyphens, and underscores")
+            )
+        
+        return value.strip()
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if request and request.user:
+            if Dispenser.objects.filter(
+                owner=request.user,
+                name=data['new_name']
+            ).exists():
+                raise serializers.ValidationError(_("You already have a dispenser with this name"))
+        return data

@@ -2,10 +2,13 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
-from .models import Dispenser
+from .models import Dispenser, Container
 from .serializers import (
     DispenserSerializer,
+    ContainerSerializer,
     RegisterDispenserSerializer,
+    UpdatePillNameSerializer,
+    UpdateDispenserNameSerializer,
 )
 
 class RegisterDispenserView(generics.CreateAPIView):
@@ -64,3 +67,65 @@ class ShowAllDispensers(APIView):
         queryset = Dispenser.objects.filter(owner=request.user)
         serializer = DispenserSerializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class UpdatePillNameView(generics.UpdateAPIView):
+    serializer_class = UpdatePillNameSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            dispenser = Dispenser.objects.get(
+                owner=request.user,
+                name=serializer.validated_data['dispenser_name']
+            )
+        except Dispenser.DoesNotExist:
+            return Response(
+                {"detail": "Dispenser not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            container = Container.objects.get(
+                dispenser=dispenser,
+                slot_number=serializer.validated_data['slot_number']
+            )
+        except Container.DoesNotExist:
+            return Response(
+                {"detail": "Container not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        container.pill_name = serializer.validated_data['pill_name']
+        container.save()
+
+        response_serializer = ContainerSerializer(container)
+        return Response(response_serializer.data)
+
+class UpdateDispenserNameView(generics.UpdateAPIView):
+    serializer_class = UpdateDispenserNameSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            dispenser = Dispenser.objects.get(
+                owner=request.user,
+                name=serializer.validated_data['current_name']
+            )
+        except Dispenser.DoesNotExist:
+            return Response(
+                {"detail": "Dispenser not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        dispenser.name = serializer.validated_data['new_name']
+        dispenser.save()
+
+        response_serializer = DispenserSerializer(dispenser)
+        return Response(response_serializer.data)
