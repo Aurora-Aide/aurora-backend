@@ -22,6 +22,7 @@ from .views import (
     ShowAllDispensers,
     UpdatePillNameView,
     UpdateDispenserNameView,
+    UpdateContainerSchedule,
 )
 
 
@@ -31,6 +32,7 @@ urlpatterns = [
     path('api/list-all-user-dispensers/', ShowAllDispensers.as_view(), name='list-all-user-dispensers'),
     path('api/update-pill-name/', UpdatePillNameView.as_view(), name='update-pill-name'),
     path('api/update-dispenser-name/', UpdateDispenserNameView.as_view(), name='update-dispenser-name'),
+    path('api/container-schedule/', UpdateContainerSchedule.as_view(), name='update-container-schedule'),
     path('authentication/', include('authentication.urls')),
 ]
 

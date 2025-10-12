@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Dispenser, Container
+from .models import Dispenser, Container, Schedule
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 import re
@@ -9,7 +9,7 @@ class ContainerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Container
-        fields = ['id', 'dispenser', 'slot_number', 'pill_name']
+        fields = ['id', 'dispenser', 'slot_number', 'pill_name', 'schedules']
 
     def validate_slot_number(self, value):
         if value < 1:
@@ -161,3 +161,37 @@ class UpdateDispenserNameSerializer(serializers.Serializer):
             ).exists():
                 raise serializers.ValidationError(_("You already have a dispenser with this name"))
         return data
+    
+class ScheduleInputSerializer(serializers.Serializer):
+    weekday = serializers.ChoiceField(choices=Schedule.WEEKDAYS)
+    time    = serializers.TimeField()
+
+class ContainerScheduleUpdateSerializer(serializers.Serializer):
+    dispenser_name = serializers.CharField()
+    slot_number    = serializers.IntegerField()
+    schedules      = ScheduleInputSerializer(many=True)
+    pill_name      = serializers.CharField(required=False)
+
+class ScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        fields = ['id', 'container', 'weekday', 'time']
+
+    def validate_weekday(self, value):
+        if not 0 <= value <= 6:
+            raise serializers.ValidationError(_("Weekday must be between 0 (Monday) and 6 (Sunday)"))
+        return value
+
+    def validate(self, data):
+        # Check if there's already a schedule for this container at the same weekday and time
+        if self.instance is None:
+            existing = Schedule.objects.filter(
+                container = data['container'],
+                weekday = data['weekday'],
+                time = data['time'],
+            ).exists()
+            if existing:
+                raise serializers.ValidationError(
+                    _("A schedule for this container at this weekday and time already exists")
+                )
+        return data   
