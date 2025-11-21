@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "cd aurora_backend && python manage.py migrate && gunicorn aurora_backend.wsgi:application --bind 0.0.0.0:$PORT",
+    "startCommand": "cd aurora_backend && python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn aurora_backend.wsgi:application --bind 0.0.0.0:$PORT",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
