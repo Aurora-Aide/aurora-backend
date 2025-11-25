@@ -56,39 +56,3 @@ class Container(models.Model):
 
     def __str__(self):
         return f"Slot {self.slot_number}: {self.pill_name}"
-    
-    def initialize_empty_schedules(self):
-        """Create empty schedules for this container"""
-        for weekday in range(7):  # 0-6 for Monday-Sunday
-            Schedule.objects.create(
-                container=self,
-                weekday=weekday,
-                time="12:00:00", # Default time
-                repeat = 0,
-            )
-    
-class Schedule(models.Model):
-    """
-    A single "drop" event: on a given weekday at a given time, for one container.
-    You'll create one Schedule per (weekday × time × container x repeatable).
-    """
-    WEEKDAYS = [
-        (0, "Monday"),
-        (1, "Tuesday"),
-        (2, "Wednesday"),
-        (3, "Thursday"),
-        (4, "Friday"),
-        (5, "Saturday"),
-        (6, "Sunday"),
-    ]
-
-    container = models.ForeignKey(Container, on_delete=models.CASCADE, related_name="schedules")
-    weekday = models.IntegerField(choices=WEEKDAYS)
-    time = models.TimeField()
-
-    class Meta:
-        ordering = ["container", "weekday", "time"]
-
-    def __str__(self):
-        return f"{self.container} → {self.get_weekday_display()} at {self.time}"
-

@@ -2,14 +2,13 @@ from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.db import transaction
-from .models import Dispenser, Container, Schedule
+from .models import Dispenser, Container
 from .serializers import (
     DispenserSerializer,
     ContainerSerializer,
     RegisterDispenserSerializer,
     UpdatePillNameSerializer,
     UpdateDispenserNameSerializer,
-    ContainerScheduleUpdateSerializer,
 )
 
 class RegisterDispenserView(generics.CreateAPIView):
@@ -130,57 +129,3 @@ class UpdateDispenserNameView(generics.UpdateAPIView):
 
         response_serializer = DispenserSerializer(dispenser)
         return Response(response_serializer.data)
-    
-class UpdateContainerSchedule(generics.UpdateAPIView):
-    serializer_class = ContainerScheduleUpdateSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    @transaction.atomic
-    def update(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Get the dispenser and verify ownership
-        try:
-            dispenser = Dispenser.objects.get(
-                owner=request.user,
-                name=serializer.validated_data['dispenser_name']
-            )
-        except Dispenser.DoesNotExist:
-            return Response(
-                {"detail": "Dispenser not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Get the container
-        try:
-            container = Container.objects.get(
-                dispenser=dispenser,
-                slot_number=serializer.validated_data['slot_number']
-            )
-        except Container.DoesNotExist:
-            return Response(
-                {"detail": "Container not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Update container pill name
-        container.pill_name = serializer.validated_data['pill_name']
-        container.save()
-
-        # Delete existing schedules
-        container.schedules.all().delete()
-
-        # Create new schedules
-        new_schedules = []
-        for schedule_data in serializer.validated_data['schedules']:
-            schedule = Schedule.objects.create(
-                container=container,
-                weekday=schedule_data['weekday'],
-                time=schedule_data['time'],
-            )
-            new_schedules.append(schedule)
-
-        # Return the updated container with its new schedules
-        response_serializer = ContainerSerializer(container)
-        return Response(response_serializer.data)  
