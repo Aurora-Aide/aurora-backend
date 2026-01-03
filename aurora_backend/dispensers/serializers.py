@@ -1,8 +1,10 @@
-from rest_framework import serializers
-from .models import Dispenser, Container, Schedule
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 import re
+
+from rest_framework import serializers
+from django.utils.translation import gettext_lazy as _
+
+from .models import Dispenser, Container, Schedule
+
 
 class ScheduleReadSerializer(serializers.ModelSerializer):
     class Meta:
@@ -54,14 +56,14 @@ class ContainerSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     _("This slot number is already in use for this dispenser")
                 )
-        
+
         # Validate pill name is not empty
         if not data.get('pill_name', '').strip():
             raise serializers.ValidationError(_("Pill name cannot be empty"))
 
         # Maximum number of containers per dispenser (e.g., 8 slots)
         MAX_SLOTS = 8
-        if self.instance is None: 
+        if self.instance is None:
             current_count = Container.objects.filter(dispenser=data['dispenser']).count()
             if current_count >= MAX_SLOTS:
                 raise serializers.ValidationError(
@@ -73,7 +75,6 @@ class ContainerSerializer(serializers.ModelSerializer):
 
 class DispenserReadSerializer(serializers.ModelSerializer):
     containers = ContainerSerializer(many=True, read_only=True)
-    # Use email because custom User model does not expose a username attribute.
     owner = serializers.ReadOnlyField(source='owner.email')
 
     class Meta:
@@ -83,10 +84,10 @@ class DispenserReadSerializer(serializers.ModelSerializer):
     def validate_name(self, value):
         if len(value.strip()) < 3:
             raise serializers.ValidationError(_("Dispenser name must be at least 3 characters long"))
-        
+
         if not re.match(r'^[a-zA-Z0-9\s\-_]+$', value):
             raise serializers.ValidationError(_("Dispenser name can only contain letters, numbers, spaces, hyphens, and underscores"))
-        
+
         return value.strip()
 
     def validate(self, data):
@@ -101,18 +102,6 @@ class DispenserReadSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         _("You already have a dispenser with this name")
                     )
-
-        # # Maximum number of dispensers per user (e.g., 5)
-        # MAX_DISPENSERS = 5
-        # if self.instance is None:  # Only check on creation
-        #     request = self.context.get('request')
-        #     if request and request.user:
-        #         current_count = Dispenser.objects.filter(owner=request.user).count()
-        #         if current_count >= MAX_DISPENSERS:
-        #             raise serializers.ValidationError(
-        #                 _(f"You cannot have more than {MAX_DISPENSERS} dispensers")
-        #             )
-
         return data
 
 
@@ -126,13 +115,12 @@ class RegisterDispenserSerializer(serializers.Serializer):
 
     def validate_serial_id(self, value):
         # Serial ID format: SIZE-YYYYMMDD-XXXX
-        # Example: S-20250524-0001 (Small dispenser manufactured on May 24, 2025, unit 0001)
         pattern = r'^[SML]-\d{8}-\d{4}$'
         if not re.match(pattern, value):
             raise serializers.ValidationError(
                 _("Invalid serial ID format. Expected format: SIZE-YYYYMMDD-XXXX (e.g., S-20250524-0001)")
             )
-        
+
         if Dispenser.objects.filter(serial_id=value).exists():
             raise serializers.ValidationError(_("This dispenser is already registered"))
 
@@ -141,12 +129,12 @@ class RegisterDispenserSerializer(serializers.Serializer):
     def validate_name(self, value):
         if len(value.strip()) < 3:
             raise serializers.ValidationError(_("Dispenser name must be at least 3 characters long"))
-        
+
         if not re.match(r'^[a-zA-Z0-9\s\-_]+$', value):
             raise serializers.ValidationError(
                 _("Dispenser name can only contain letters, numbers, spaces, hyphens, and underscores")
             )
-        
+
         return value.strip()
 
     def validate(self, data):
@@ -157,6 +145,7 @@ class RegisterDispenserSerializer(serializers.Serializer):
                 raise serializers.ValidationError(_("You already have a dispenser with this name"))
 
         return data
+
 
 class UpdatePillNameSerializer(serializers.Serializer):
     dispenser_name = serializers.CharField()
@@ -176,12 +165,12 @@ class UpdateDispenserNameSerializer(serializers.Serializer):
     def validate_new_name(self, value):
         if len(value.strip()) < 3:
             raise serializers.ValidationError(_("Dispenser name must be at least 3 characters long"))
-        
+
         if not re.match(r'^[a-zA-Z0-9\s\-_]+$', value):
             raise serializers.ValidationError(
                 _("Dispenser name can only contain letters, numbers, spaces, hyphens, and underscores")
             )
-        
+
         return value.strip()
 
     def validate(self, data):
@@ -193,3 +182,4 @@ class UpdateDispenserNameSerializer(serializers.Serializer):
             ).exists():
                 raise serializers.ValidationError(_("You already have a dispenser with this name"))
         return data
+

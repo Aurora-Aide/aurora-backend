@@ -1,7 +1,7 @@
+from django.db import transaction
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
-from rest_framework.views import APIView
-from django.db import transaction
+
 from .models import Dispenser, Container, Schedule
 from .serializers import (
     DispenserSerializer,
@@ -28,6 +28,7 @@ from .selectors import (
     get_schedule_for_user,
 )
 
+
 class RegisterDispenserView(generics.CreateAPIView):
     serializer_class = RegisterDispenserSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -43,9 +44,9 @@ class RegisterDispenserView(generics.CreateAPIView):
             serial_id=serializer.validated_data['serial_id'],
         )
 
-        # Return the created dispenser with all its containers and schedules
         response_serializer = DispenserSerializer(dispenser)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
 
 class DeleteDispenserView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -68,26 +69,21 @@ class DeleteDispenserView(generics.DestroyAPIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-class ShowAllDispensers(APIView):
-    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        queryset = list_dispensers_for_user(request.user)
-        serializer = DispenserSerializer(queryset, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class ShowAllDispensers(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DispenserSerializer
+
+    def get_queryset(self):
+        return list_dispensers_for_user(self.request.user)
 
 
 class GetDispenserView(generics.RetrieveAPIView):
-    """
-    Return a single dispenser (owned by the authenticated user) with its containers.
-    """
-
     serializer_class = DispenserSerializer
     permission_classes = [permissions.IsAuthenticated]
     queryset = Dispenser.objects.all()
 
     def get_queryset(self):
-        # Restrict to the requesting user's dispensers to avoid data leaks.
         return list_dispensers_for_user(self.request.user)
 
 
@@ -120,6 +116,7 @@ class UpdatePillNameView(generics.UpdateAPIView):
 
         response_serializer = ContainerSerializer(container)
         return Response(response_serializer.data)
+
 
 class UpdateDispenserNameView(generics.UpdateAPIView):
     serializer_class = UpdateDispenserNameSerializer
@@ -171,6 +168,14 @@ class ContainerScheduleListCreateView(generics.ListCreateAPIView):
             **serializer.validated_data,
         )
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        read = ScheduleReadSerializer(self.get_queryset().latest("id"))
+        headers = self.get_success_headers(read.data)
+        return Response(read.data, status=status.HTTP_201_CREATED, headers=headers)
+
 
 class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -203,3 +208,6 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
         schedule = self.get_object()
         delete_schedule(schedule=schedule, owner=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+from django.shortcuts import render
+
+# Create your views here.

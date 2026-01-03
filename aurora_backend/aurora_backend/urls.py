@@ -16,21 +16,8 @@ Including another URLconf
 """
 
 from django.urls import path, include
-from .views import (
-    RegisterDispenserView,
-    DeleteDispenserView,
-    ShowAllDispensers,
-    UpdatePillNameView,
-    UpdateDispenserNameView,
-)
-
-
 urlpatterns = [
-    path('api/register-dispenser/', RegisterDispenserView.as_view(), name='register-dispenser'),
-    path('api/delete-dispenser/<str:name>/', DeleteDispenserView.as_view(), name='delete-dispenser'),
-    path('api/list-all-user-dispensers/', ShowAllDispensers.as_view(), name='list-all-user-dispensers'),
-    path('api/update-pill-name/', UpdatePillNameView.as_view(), name='update-pill-name'),
-    path('api/update-dispenser-name/', UpdateDispenserNameView.as_view(), name='update-dispenser-name'),
+    path('api/', include('dispensers.urls')),
     path('authentication/', include('authentication.urls')),
 ]
 

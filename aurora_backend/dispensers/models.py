@@ -1,3 +1,4 @@
+# Dispenser-related models moved from the project package into this app.
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -25,7 +26,7 @@ class Dispenser(models.Model):
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.name} (owned by {self.owner.username})"
+        return f"{self.name} (owned by {self.owner.email})"
 
     @property
     def max_containers(self):
@@ -39,6 +40,7 @@ class Dispenser(models.Model):
                 slot_number=slot,
                 pill_name=f"Empty Slot {slot}"
             )
+
 
 class Container(models.Model):
     """
@@ -95,3 +97,4 @@ class Schedule(models.Model):
 
     def __str__(self):
         return f"{self.get_day_of_week_display()} {self.hour:02d}:{self.minute:02d} (repeat={self.repeat})"
+
