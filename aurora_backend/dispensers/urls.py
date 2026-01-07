@@ -7,8 +7,11 @@ from .views import (
     GetDispenserView,
     UpdatePillNameView,
     UpdateDispenserNameView,
-    ContainerScheduleListCreateView,
-    ScheduleDetailView,
+    ContainerScheduleListView,
+    ContainerScheduleCreateView,
+    ScheduleRetrieveView,
+    ScheduleUpdateView,
+    ScheduleDeleteView,
 )
 
 urlpatterns = [
@@ -18,7 +21,10 @@ urlpatterns = [
     path('dispenser/<int:pk>/', GetDispenserView.as_view(), name='get-dispenser'),
     path('update-pill-name/', UpdatePillNameView.as_view(), name='update-pill-name'),
     path('update-dispenser-name/', UpdateDispenserNameView.as_view(), name='update-dispenser-name'),
-    path('containers/<int:container_id>/schedules/', ContainerScheduleListCreateView.as_view(), name='container-schedules'),
-    path('schedules/<int:pk>/', ScheduleDetailView.as_view(), name='schedule-detail'),
+    path('containers/<int:container_id>/schedules/list/', ContainerScheduleListView.as_view(), name='container-schedules-list'),
+    path('containers/<int:container_id>/schedules/create/', ContainerScheduleCreateView.as_view(), name='container-schedules-create'),
+    path('schedules/<int:pk>/retrieve/', ScheduleRetrieveView.as_view(), name='schedule-retrieve'),
+    path('schedules/<int:pk>/update/', ScheduleUpdateView.as_view(), name='schedule-update'),
+    path('schedules/<int:pk>/delete/', ScheduleDeleteView.as_view(), name='schedule-delete'),
 ]
 

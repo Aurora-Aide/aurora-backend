@@ -79,7 +79,7 @@ class DispenserReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dispenser
-        fields = ['id', 'name', 'owner', 'containers']
+        fields = ['id', 'name', 'serial_id', 'owner', 'containers']
 
     def validate_name(self, value):
         if len(value.strip()) < 3:

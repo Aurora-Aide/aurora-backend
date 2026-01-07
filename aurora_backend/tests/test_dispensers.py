@@ -62,7 +62,7 @@ class DispenserAPITests(TestCase):
         container = Container.objects.filter(dispenser=dispenser).first()
 
         self.client.force_authenticate(user=self.user)
-        url = reverse("container-schedules", args=[container.id])
+        url = reverse("container-schedules-create", args=[container.id])
         payload = {"day_of_week": 0, "hour": 9, "minute": 0, "repeat": True}
         resp = self.client.post(url, payload, format="json")
 
@@ -75,7 +75,7 @@ class DispenserAPITests(TestCase):
         schedule = Schedule.objects.create(container=container, day_of_week=1, hour=10, minute=0, repeat=True)
 
         self.client.force_authenticate(user=self.user)
-        url = reverse("schedule-detail", args=[schedule.id])
+        url = reverse("schedule-retrieve", args=[schedule.id])
         resp = self.client.get(url)
 
         self.assertEqual(resp.status_code, 404)
