@@ -1,17 +1,20 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
-from .models import Dispenser, Container, Schedule
+from .models import Dispenser, Container, Schedule, DispenserModel
 
 
 @transaction.atomic
 def create_dispenser_for_user(*, owner, name: str, serial_id: str) -> Dispenser:
-    size = serial_id[0]
+    prefix = serial_id.split("-")[0]
+    dispenser_model = DispenserModel.objects.filter(code=prefix).first()
+    size = prefix
     dispenser = Dispenser.objects.create(
         owner=owner,
         name=name,
         serial_id=serial_id,
         size=size,
+        dispenser_model=dispenser_model,
     )
     dispenser.initialize_containers()
     return dispenser

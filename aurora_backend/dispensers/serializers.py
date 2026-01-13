@@ -3,7 +3,7 @@ import re
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
 
-from .models import Dispenser, Container, Schedule
+from .models import Dispenser, Container, Schedule, DispenserModel
 
 
 class ScheduleReadSerializer(serializers.ModelSerializer):
@@ -114,12 +114,16 @@ class RegisterDispenserSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
 
     def validate_serial_id(self, value):
-        # Serial ID format: SIZE-YYYYMMDD-XXXX
-        pattern = r'^[SML]-\d{8}-\d{4}$'
+        # Serial ID format: CODE-YYYYMMDD-XXXX
+        pattern = r'^[A-Z0-9]+-\d{8}-\d{4}$'
         if not re.match(pattern, value):
             raise serializers.ValidationError(
-                _("Invalid serial ID format. Expected format: SIZE-YYYYMMDD-XXXX (e.g., S-20250524-0001)")
+                _("Invalid serial ID format. Expected format: CODE-YYYYMMDD-XXXX (e.g., S-20250524-0001)")
             )
+
+        code = value.split("-")[0]
+        if not DispenserModel.objects.filter(code=code).exists():
+            raise serializers.ValidationError(_("Unknown dispenser model code."))
 
         if Dispenser.objects.filter(serial_id=value).exists():
             raise serializers.ValidationError(_("This dispenser is already registered"))

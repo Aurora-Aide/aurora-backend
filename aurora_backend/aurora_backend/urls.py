@@ -16,8 +16,10 @@ Including another URLconf
 """
 
 from django.urls import path, include
+
 urlpatterns = [
     path('api/', include('dispensers.urls')),
+    path('api/admin/', include('aurora_admin.urls')),
     path('authentication/', include('authentication.urls')),
 ]
 

@@ -4,6 +4,20 @@ from django.conf import settings
 from django.utils import timezone
 
 
+class DispenserModel(models.Model):
+    code = models.CharField(max_length=10, unique=True)  # e.g., S, M, L, XL1
+    name = models.CharField(max_length=100)
+    slot_count = models.PositiveIntegerField(default=4)
+    serial_prefix = models.CharField(max_length=10, unique=True)
+    next_sequence = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code} ({self.name})"
+
+
 class Dispenser(models.Model):
     DISPENSER_SIZES = {
         'S': ('small', 4),
@@ -11,14 +25,11 @@ class Dispenser(models.Model):
         'L': ('large', 10)
     }
 
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="dispensers")
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name="dispensers")
     name = models.CharField(max_length=100)
-    serial_id = models.CharField(max_length=20, unique=True)
-    size = models.CharField(max_length=1, choices=[
-        ('S', 'Small - 4 containers'),
-        ('M', 'Medium - 6 containers'),
-        ('L', 'Large - 10 containers')
-    ])
+    serial_id = models.CharField(max_length=30, unique=True)
+    size = models.CharField(max_length=10)  # code; keep free-form for new models
+    dispenser_model = models.ForeignKey(DispenserModel, on_delete=models.SET_NULL, null=True, blank=True, related_name="dispensers")
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -26,11 +37,14 @@ class Dispenser(models.Model):
         ordering = ["name"]
 
     def __str__(self):
-        return f"{self.name} (owned by {self.owner.email})"
+        return f"{self.name} (owned by {self.owner.email if self.owner else 'unassigned'})"
 
     @property
     def max_containers(self):
-        return self.DISPENSER_SIZES[self.size][1]
+        if self.dispenser_model:
+            return self.dispenser_model.slot_count
+        # Fallback to legacy size mapping
+        return self.DISPENSER_SIZES.get(self.size, ('', 4))[1]
 
     def initialize_containers(self):
         """Create empty containers for this dispenser based on its size"""
