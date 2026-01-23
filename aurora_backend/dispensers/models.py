@@ -31,6 +31,12 @@ class Dispenser(models.Model):
     size = models.CharField(max_length=10)  # code; keep free-form for new models
     dispenser_model = models.ForeignKey(DispenserModel, on_delete=models.SET_NULL, null=True, blank=True, related_name="dispensers")
     created_at = models.DateTimeField(default=timezone.now)
+    # Device-facing fields
+    device_secret = models.CharField(max_length=64, default='', blank=True)
+    schedule_version = models.BigIntegerField(default=1)
+    device_session_rev = models.PositiveIntegerField(default=1)
+    dirty = models.BooleanField(default=True)
+    last_seen_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ("owner", "name")
@@ -111,4 +117,26 @@ class Schedule(models.Model):
 
     def __str__(self):
         return f"{self.get_day_of_week_display()} {self.hour:02d}:{self.minute:02d} (repeat={self.repeat})"
+
+
+class ScheduleEvent(models.Model):
+    STATUS_COMPLETED = "completed"
+    STATUS_MISSED = "missed"
+    STATUS_CHOICES = [
+        (STATUS_COMPLETED, "completed"),
+        (STATUS_MISSED, "missed"),
+    ]
+
+    dispenser = models.ForeignKey(Dispenser, on_delete=models.CASCADE, related_name="events")
+    container = models.ForeignKey(Container, on_delete=models.SET_NULL, null=True, blank=True, related_name="events")
+    schedule = models.ForeignKey(Schedule, on_delete=models.SET_NULL, null=True, blank=True, related_name="events")
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES)
+    occurred_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at", "-id"]
+
+    def __str__(self):
+        return f"{self.dispenser.serial_id} {self.status} at {self.occurred_at}"
 

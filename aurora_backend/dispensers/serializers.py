@@ -187,3 +187,29 @@ class UpdateDispenserNameSerializer(serializers.Serializer):
                 raise serializers.ValidationError(_("You already have a dispenser with this name"))
         return data
 
+
+class DeviceScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Schedule
+        fields = ["id", "day_of_week", "hour", "minute", "repeat"]
+
+
+class DeviceContainerSerializer(serializers.ModelSerializer):
+    schedules = DeviceScheduleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Container
+        fields = ["slot_number", "pill_name", "schedules"]
+
+
+class DeviceConfigSerializer(serializers.Serializer):
+    serial_id = serializers.CharField()
+    schedule_version = serializers.IntegerField()
+    containers = DeviceContainerSerializer(many=True)
+
+
+class DeviceEventSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["completed", "missed"])
+    occurred_at = serializers.DateTimeField()
+    container_slot = serializers.IntegerField(required=False)
+    schedule_id = serializers.IntegerField(required=False)

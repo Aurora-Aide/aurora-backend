@@ -77,6 +77,11 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
+# Device token settings (for dispenser sessions)
+DEVICE_TOKEN_SECRET = os.getenv("DEVICE_TOKEN_SECRET", SECRET_KEY)
+DEVICE_TOKEN_TTL_MINUTES = int(os.getenv("DEVICE_TOKEN_TTL_MINUTES", "60"))
+DEVICE_TOKEN_ALGORITHM = os.getenv("DEVICE_TOKEN_ALGORITHM", "HS256")
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
