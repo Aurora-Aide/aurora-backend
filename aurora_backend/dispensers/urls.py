@@ -5,6 +5,7 @@ from .views import (
     DeleteDispenserView,
     ShowAllDispensers,
     GetDispenserView,
+    ResetDispenserPairingView,
     UpdatePillNameView,
     UpdateDispenserNameView,
     ContainerScheduleListView,
@@ -13,13 +14,14 @@ from .views import (
     ScheduleUpdateView,
     ScheduleDeleteView,
 )
-from .device_views import DeviceConfigView, DeviceEventView, DeviceSessionView
+from .device_views import DeviceConfigView, DeviceEventView, DeviceSessionView, DevicePairView
 
 urlpatterns = [
     path('register-dispenser/', RegisterDispenserView.as_view(), name='register-dispenser'),
     path('delete-dispenser/<str:name>/', DeleteDispenserView.as_view(), name='delete-dispenser'),
     path('list-all-user-dispensers/', ShowAllDispensers.as_view(), name='list-all-user-dispensers'),
     path('dispenser/<int:pk>/', GetDispenserView.as_view(), name='get-dispenser'),
+    path('dispenser/<int:pk>/reset-pairing/', ResetDispenserPairingView.as_view(), name='reset-dispenser-pairing'),
     path('update-pill-name/', UpdatePillNameView.as_view(), name='update-pill-name'),
     path('update-dispenser-name/', UpdateDispenserNameView.as_view(), name='update-dispenser-name'),
     path('containers/<int:container_id>/schedules/list/', ContainerScheduleListView.as_view(), name='container-schedules-list'),
@@ -30,5 +32,6 @@ urlpatterns = [
     path('devices/<str:serial_id>/config/', DeviceConfigView.as_view(), name='device-config'),
     path('devices/<str:serial_id>/events/', DeviceEventView.as_view(), name='device-events'),
     path('devices/<str:serial_id>/session/', DeviceSessionView.as_view(), name='device-session'),
+    path('devices/<str:serial_id>/pair/', DevicePairView.as_view(), name='device-pair'),
 ]
 
