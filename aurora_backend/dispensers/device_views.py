@@ -1,3 +1,6 @@
+import secrets
+
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status, permissions
 from rest_framework.response import Response
@@ -85,5 +88,26 @@ class DeviceSessionView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class DevicePairView(APIView):
+    """
+    First-connect pairing: issue device_secret once for unpaired dispensers.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, serial_id):
+        with transaction.atomic():
+            dispenser = Dispenser.objects.select_for_update().filter(serial_id=serial_id).first()
+            if not dispenser:
+                return Response({"detail": "Dispenser not found"}, status=status.HTTP_404_NOT_FOUND)
+            if dispenser.device_secret:
+                return Response({"detail": "Device already paired"}, status=status.HTTP_409_CONFLICT)
+
+            dispenser.device_secret = secrets.token_hex(16)
+            dispenser.save(update_fields=["device_secret"])
+
+        return Response({"device_secret": dispenser.device_secret}, status=status.HTTP_200_OK)
 
 

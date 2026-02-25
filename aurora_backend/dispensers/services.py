@@ -1,8 +1,6 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 
-import secrets
-
 from .models import Dispenser, Container, Schedule, DispenserModel
 
 
@@ -23,7 +21,6 @@ def create_dispenser_for_user(*, owner, name: str, serial_id: str) -> Dispenser:
         serial_id=serial_id,
         size=size,
         dispenser_model=dispenser_model,
-        device_secret=secrets.token_hex(16),
     )
     dispenser.initialize_containers()
     dispenser.dirty = True

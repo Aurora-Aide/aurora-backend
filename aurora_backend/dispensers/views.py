@@ -1,5 +1,7 @@
 from django.db import transaction, IntegrityError
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, permissions
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 
@@ -86,6 +88,26 @@ class GetDispenserView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         return list_dispensers_for_user(self.request.user)
+
+
+class ResetDispenserPairingView(APIView):
+    """
+    Clears device_secret so the physical dispenser can pair again.
+    Requires authenticated owner (app user).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk: int):
+        dispenser = get_object_or_404(Dispenser.objects.select_for_update(), pk=pk, owner=request.user)
+
+        dispenser.device_secret = ""
+        # Revoke any existing device session tokens as well.
+        dispenser.device_session_rev += 1
+        dispenser.save(update_fields=["device_secret", "device_session_rev"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UpdatePillNameView(generics.UpdateAPIView):
@@ -240,6 +262,3 @@ class ScheduleDeleteView(generics.DestroyAPIView):
         schedule = self.get_object()
         delete_schedule(schedule=schedule, owner=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
-from django.shortcuts import render
-
-# Create your views here.
