@@ -1,11 +1,14 @@
+from datetime import datetime, timedelta
+
 from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import Dispenser, Container, Schedule
+from .models import Dispenser, Container, Schedule, MobilePushToken
 from .serializers import (
     DispenserSerializer,
     ContainerSerializer,
@@ -14,6 +17,8 @@ from .serializers import (
     UpdateDispenserNameSerializer,
     ScheduleReadSerializer,
     ScheduleWriteSerializer,
+    MobilePushTokenSerializer,
+    MobilePushTokenDeactivateSerializer,
 )
 from .services import (
     create_dispenser_for_user,
@@ -97,10 +102,14 @@ class ResetDispenserPairingView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
 
     @transaction.atomic
     def post(self, request, pk: int):
-        dispenser = get_object_or_404(Dispenser.objects.select_for_update(), pk=pk, owner=request.user)
+        if not request.user or not request.user.is_authenticated:
+            return Response({"detail": "Authentication credentials were not provided."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        dispenser = get_object_or_404(Dispenser.objects.select_for_update(), pk=pk, owner_id=request.user.id)
 
         dispenser.device_secret = ""
         # Revoke any existing device session tokens as well.
@@ -215,6 +224,50 @@ class ContainerScheduleCreateView(generics.CreateAPIView):
         return Response(read.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
+class ContainerDispenseNowView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @transaction.atomic
+    def post(self, request, container_id: int):
+        container = get_container_for_user(request.user, container_id)
+        # Use host local timezone clock (not Django UTC setting) for "Drop Now".
+        now = datetime.now().astimezone()
+
+        # Try current minute first, then up to +5 minutes to avoid unique collisions.
+        for offset_minutes in range(0, 6):
+            target = now + timedelta(minutes=offset_minutes)
+            day_of_week = target.weekday()  # Monday=0 .. Sunday=6 (matches backend contract)
+            hour = target.hour
+            minute = target.minute
+
+            if container.schedules.filter(
+                day_of_week=day_of_week,
+                hour=hour,
+                minute=minute,
+            ).exists():
+                continue
+
+            try:
+                schedule = create_schedule_for_container(
+                    container=container,
+                    owner=request.user,
+                    day_of_week=day_of_week,
+                    hour=hour,
+                    minute=minute,
+                    repeat=False,
+                )
+            except IntegrityError:
+                continue
+
+            return Response(ScheduleReadSerializer(schedule).data, status=status.HTTP_201_CREATED)
+
+        return Response(
+            {"detail": "Could not schedule instant drop. Time slots are occupied for the next 5 minutes."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+
 class ScheduleRetrieveView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ScheduleReadSerializer
@@ -262,3 +315,52 @@ class ScheduleDeleteView(generics.DestroyAPIView):
         schedule = self.get_object()
         delete_schedule(schedule=schedule, owner=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RegisterMobilePushTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = MobilePushTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data["token"]
+        platform = serializer.validated_data["platform"]
+
+        mobile_token, _ = MobilePushToken.objects.update_or_create(
+            token=token,
+            defaults={
+                "user": request.user,
+                "platform": platform,
+                "is_active": True,
+            },
+        )
+        return Response(
+            {
+                "detail": "Push token registered.",
+                "id": mobile_token.id,
+                "token": mobile_token.token,
+                "platform": mobile_token.platform,
+                "is_active": mobile_token.is_active,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class DeactivateMobilePushTokenView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = MobilePushTokenDeactivateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data["token"]
+        updated = MobilePushToken.objects.filter(user=request.user, token=token, is_active=True).update(is_active=False)
+        return Response(
+            {"detail": "Push token deactivated.", "updated": updated},
+            status=status.HTTP_200_OK,
+        )

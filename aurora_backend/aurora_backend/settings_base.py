@@ -47,7 +47,7 @@ REST_FRAMEWORK = {
         'logout': '30/min',
         'delete_user': '5/min',
     },
-    'EXCEPTION_HANDLER': 'aurora_backend.exceptions.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'exceptions.custom_exception_handler',
 }
 
 # JWT Settings
@@ -81,6 +81,11 @@ SIMPLE_JWT = {
 DEVICE_TOKEN_SECRET = os.getenv("DEVICE_TOKEN_SECRET", SECRET_KEY)
 DEVICE_TOKEN_TTL_MINUTES = int(os.getenv("DEVICE_TOKEN_TTL_MINUTES", "60"))
 DEVICE_TOKEN_ALGORITHM = os.getenv("DEVICE_TOKEN_ALGORITHM", "HS256")
+
+# FCM push settings (mobile notifications)
+FCM_PUSH_ENABLED = os.getenv("FCM_PUSH_ENABLED", "False").lower() == "true"
+FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "")
+FCM_SERVICE_ACCOUNT_FILE = os.getenv("FCM_SERVICE_ACCOUNT_FILE", "")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

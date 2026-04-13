@@ -3,7 +3,7 @@ import re
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
 
-from .models import Dispenser, Container, Schedule, DispenserModel
+from .models import Dispenser, Container, Schedule, DispenserModel, MobilePushToken
 
 
 class ScheduleReadSerializer(serializers.ModelSerializer):
@@ -213,3 +213,27 @@ class DeviceEventSerializer(serializers.Serializer):
     occurred_at = serializers.DateTimeField()
     container_slot = serializers.IntegerField(required=False)
     schedule_id = serializers.IntegerField(required=False)
+
+
+class MobilePushTokenSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=255)
+    platform = serializers.ChoiceField(
+        choices=[MobilePushToken.PLATFORM_ANDROID, MobilePushToken.PLATFORM_IOS],
+        default=MobilePushToken.PLATFORM_ANDROID,
+    )
+
+    def validate_token(self, value):
+        token = value.strip()
+        if not token:
+            raise serializers.ValidationError(_("Token cannot be empty"))
+        return token
+
+
+class MobilePushTokenDeactivateSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=255)
+
+    def validate_token(self, value):
+        token = value.strip()
+        if not token:
+            raise serializers.ValidationError(_("Token cannot be empty"))
+        return token
