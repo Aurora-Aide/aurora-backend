@@ -140,3 +140,25 @@ class ScheduleEvent(models.Model):
     def __str__(self):
         return f"{self.dispenser.serial_id} {self.status} at {self.occurred_at}"
 
+
+class MobilePushToken(models.Model):
+    PLATFORM_ANDROID = "android"
+    PLATFORM_IOS = "ios"
+    PLATFORM_CHOICES = [
+        (PLATFORM_ANDROID, "Android"),
+        (PLATFORM_IOS, "iOS"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="mobile_push_tokens")
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(max_length=16, choices=PLATFORM_CHOICES, default=PLATFORM_ANDROID)
+    is_active = models.BooleanField(default=True)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-last_seen_at", "-id"]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.platform}:{'active' if self.is_active else 'inactive'}"
+

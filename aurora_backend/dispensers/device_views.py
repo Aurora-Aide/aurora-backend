@@ -10,6 +10,7 @@ from .device_auth import DeviceAuthentication, DeviceSessionAuthentication
 from .models import Dispenser, Container, Schedule, ScheduleEvent
 from .serializers import DeviceConfigSerializer, DeviceEventSerializer, DeviceContainerSerializer
 from .device_tokens import issue_device_token
+from .push_notifications import send_push_for_schedule_event
 
 
 class DeviceConfigView(APIView):
@@ -39,6 +40,7 @@ class DeviceEventView(APIView):
     authentication_classes = [DeviceSessionAuthentication, DeviceAuthentication]
     permission_classes = [permissions.AllowAny]
 
+    @transaction.atomic
     def post(self, request, serial_id):
         dispenser = Dispenser.objects.filter(serial_id=serial_id).first()
         if not dispenser:
@@ -62,6 +64,25 @@ class DeviceEventView(APIView):
             status=payload["status"],
             occurred_at=payload["occurred_at"],
         )
+
+        send_push_for_schedule_event(
+            dispenser=dispenser,
+            container=container,
+            status=payload["status"],
+            occurred_at=payload["occurred_at"],
+            schedule_id=schedule.id if schedule else None,
+        )
+
+        # One-time schedules should be removed after a successful drop.
+        if (
+            payload["status"] == ScheduleEvent.STATUS_COMPLETED
+            and schedule is not None
+            and not schedule.repeat
+        ):
+            schedule.delete()
+            dispenser.dirty = True
+            dispenser.schedule_version += 1
+            dispenser.save(update_fields=["dirty", "schedule_version"])
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
