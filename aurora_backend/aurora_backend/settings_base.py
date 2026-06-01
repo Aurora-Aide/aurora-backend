@@ -5,6 +5,7 @@ Base settings shared across environments.
 import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import urlparse, parse_qs
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -118,12 +119,45 @@ WSGI_APPLICATION = 'aurora_backend.wsgi.application'
 
 
 # Database
-DATABASES = {
-    'default': {
+def _database_from_env():
+    """
+    Parse DATABASE_URL for managed Postgres environments (e.g. Railway).
+    Falls back to SQLite when DATABASE_URL is not provided.
+    """
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if not database_url:
+        return {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+
+    parsed = urlparse(database_url)
+    scheme = parsed.scheme.lower()
+    if scheme in {"postgres", "postgresql"}:
+        config = {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': (parsed.path or "").lstrip("/"),
+            'USER': parsed.username or "",
+            'PASSWORD': parsed.password or "",
+            'HOST': parsed.hostname or "",
+            'PORT': str(parsed.port or ""),
+        }
+        options = {}
+        query = parse_qs(parsed.query)
+        if "sslmode" in query and query["sslmode"]:
+            options["sslmode"] = query["sslmode"][-1]
+        if options:
+            config["OPTIONS"] = options
+        return config
+
+    # Unknown URL schemes fallback to SQLite for safety.
+    return {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
-}
+
+
+DATABASES = {'default': _database_from_env()}
 
 
 # Password validation
@@ -145,7 +179,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "Asia/Riyadh")
 USE_I18N = True
 USE_TZ = True
 

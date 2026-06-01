@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    ServerTimeView,
     RegisterDispenserView,
     DeleteDispenserView,
     ShowAllDispensers,
@@ -20,6 +21,7 @@ from .views import (
 from .device_views import DeviceConfigView, DeviceEventView, DeviceSessionView, DevicePairView
 
 urlpatterns = [
+    path('time/', ServerTimeView.as_view(), name='server-time'),
     path('register-dispenser/', RegisterDispenserView.as_view(), name='register-dispenser'),
     path('delete-dispenser/<str:name>/', DeleteDispenserView.as_view(), name='delete-dispenser'),
     path('list-all-user-dispensers/', ShowAllDispensers.as_view(), name='list-all-user-dispensers'),

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from django.db import transaction, IntegrityError
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -35,6 +36,26 @@ from .selectors import (
     get_container_for_user,
     get_schedule_for_user,
 )
+
+
+class ServerTimeView(APIView):
+    """
+    Lightweight unauthenticated endpoint for devices to sync local time
+    when NTP is unavailable.
+    """
+
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        now = timezone.localtime()
+        return Response(
+            {
+                "iso": now.isoformat(),
+                "unix": int(now.timestamp()),
+                "timezone": str(now.tzinfo),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class RegisterDispenserView(generics.CreateAPIView):

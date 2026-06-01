@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aurora-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Asia/Riyadh}
+      TZ: ${DJANGO_TIME_ZONE:-Asia/Riyadh}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aurora_user}:${POSTGRES_PASSWORD:-aurora_pass}@postgres:5432/${POSTGRES_DB:-aurora}
+      FCM_PUSH_ENABLED: ${FCM_PUSH_ENABLED:-true}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-aurora-a7caf}
+      FCM_SERVICE_ACCOUNT_FILE: /app/aurora_backend/fcm-service-account.json
+    volumes:
+      - ./aurora_backend:/app/aurora_backend
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
+
+  postgres:
+    image: postgres:16
+    container_name: aurora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aurora}
+      POSTGRES_USER: ${POSTGRES_USER:-aurora_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aurora_pass}
+      TZ: ${DJANGO_TIME_ZONE:-Asia/Riyadh}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - aurora_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  aurora_pgdata:
