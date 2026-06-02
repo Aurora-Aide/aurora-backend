@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 from .models import Dispenser, Container, Schedule, DispenserModel
 
@@ -12,13 +13,18 @@ def _mark_dispenser_dirty(dispenser: Dispenser):
 
 @transaction.atomic
 def create_dispenser_for_user(*, owner, name: str, serial_id: str) -> Dispenser:
-    prefix = serial_id.split("-")[0]
-    dispenser_model = DispenserModel.objects.filter(code=prefix).first()
+    normalized_serial_id = serial_id.strip()
+    parts = normalized_serial_id.split("-", 2)
+    prefix = parts[0].upper().rstrip("-") if parts else ""
+    if len(parts) == 3:
+        normalized_serial_id = f"{prefix}-{parts[1]}-{parts[2]}"
+
+    dispenser_model = DispenserModel.objects.filter(Q(code=prefix) | Q(serial_prefix=prefix)).first()
     size = prefix
     dispenser = Dispenser.objects.create(
         owner=owner,
         name=name,
-        serial_id=serial_id,
+        serial_id=normalized_serial_id,
         size=size,
         dispenser_model=dispenser_model,
     )

@@ -1,6 +1,7 @@
 import re
 
 from rest_framework import serializers
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
 from .models import Dispenser, Container, Schedule, DispenserModel, MobilePushToken
@@ -115,20 +116,26 @@ class RegisterDispenserSerializer(serializers.Serializer):
 
     def validate_serial_id(self, value):
         # Serial ID format: CODE-YYYYMMDD-XXXX
-        pattern = r'^[A-Z0-9]+-\d{8}-\d{4}$'
-        if not re.match(pattern, value):
+        raw = value.strip()
+        pattern = r'^([A-Za-z0-9]+)-(\d{8})-(\d{4})$'
+        match = re.match(pattern, raw)
+        if not match:
             raise serializers.ValidationError(
-                _("Invalid serial ID format. Expected format: CODE-YYYYMMDD-XXXX (e.g., S-20250524-0001)")
+                _("Invalid serial ID format. Expected format: CODE-YYYYMMDD-XXXX (e.g., XS-20250524-0001)")
             )
 
-        code = value.split("-")[0]
-        if not DispenserModel.objects.filter(code=code).exists():
+        code = match.group(1).upper().rstrip("-")
+        date_part = match.group(2)
+        sequence_part = match.group(3)
+        normalized_serial_id = f"{code}-{date_part}-{sequence_part}"
+
+        if not DispenserModel.objects.filter(Q(code=code) | Q(serial_prefix=code)).exists():
             raise serializers.ValidationError(_("Unknown dispenser model code."))
 
-        if Dispenser.objects.filter(serial_id=value).exists():
+        if Dispenser.objects.filter(serial_id=normalized_serial_id).exists():
             raise serializers.ValidationError(_("This dispenser is already registered"))
 
-        return value
+        return normalized_serial_id
 
     def validate_name(self, value):
         if len(value.strip()) < 3:

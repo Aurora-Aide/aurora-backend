@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from dispensers.models import Dispenser, Container, Schedule
+from dispensers.models import Dispenser, Container, Schedule, DispenserModel
 from dispensers.services import create_dispenser_for_user
 from authentication.models import User
 
@@ -23,6 +23,9 @@ class DispenserAPITests(TestCase):
             first_name="Other",
             last_name="User",
         )
+        DispenserModel.objects.get_or_create(code="S", defaults={"name": "Small", "slot_count": 4, "serial_prefix": "S"})
+        DispenserModel.objects.get_or_create(code="M", defaults={"name": "Medium", "slot_count": 6, "serial_prefix": "M"})
+        DispenserModel.objects.get_or_create(code="L", defaults={"name": "Large", "slot_count": 10, "serial_prefix": "L"})
 
     def test_list_returns_only_owned_dispensers(self):
         create_dispenser_for_user(owner=self.user, name="MyDisp", serial_id="S-20250101-0001")
@@ -120,3 +123,18 @@ class DispenserAPITests(TestCase):
         dispenser.refresh_from_db()
         self.assertTrue(dispenser.dirty)
         self.assertEqual(dispenser.schedule_version, 2)
+
+    def test_register_dispenser_accepts_lowercase_code_and_stores_uppercase_prefix(self):
+        DispenserModel.objects.create(code="XS", name="Extra Small", slot_count=2, serial_prefix="XS")
+        self.client.force_authenticate(user=self.user)
+        url = reverse("register-dispenser")
+
+        resp = self.client.post(
+            url,
+            {"name": "Travel Disp", "serial_id": "xs-20260206-0001"},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        disp = Dispenser.objects.get(serial_id="XS-20260206-0001")
+        self.assertEqual(disp.size, "XS")
