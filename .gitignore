@@ -206,3 +206,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Firebase service account key
+aurora_backend/fcm-service-account.json
